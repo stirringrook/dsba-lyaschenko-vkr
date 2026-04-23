@@ -1,0 +1,39 @@
+run_name: stage3_f4_xattn
+
+seed: 42
+data:
+  train_annotations: data/affwild2/annotations/training_set_annotations.txt
+  val_annotations:   data/affwild2/annotations/validation_set_annotations.txt
+  num_aus: 12
+  num_expr: 8
+visual:
+  backbone: enet_b0_8_va_mtl
+  features_cache: cache/features/enet_b0_8_va_mtl
+  feature_dim: 1280
+  scores_dim: 10
+audio:
+  backbone: hubert_large
+  aligned_dir: cache/features/hubert_large_aligned
+  feature_dim: 1024
+head:
+  au_hidden: 128
+
+fusion:
+  variant: f4_xattn
+  hidden: 256      # shared embedding dim for cross-attention
+  dropout: 0.1
+  num_heads: 4
+  window: 5        # +/-5 frames => sequence length 11
+
+train:
+  optimizer: adamw
+  learning_rate: 3.0e-4
+  weight_decay: 1.0e-4
+  batch_size: 128       # windowed samples are 11x heavier
+  epochs: 15
+  num_workers: 4
+  device: cuda
+  loss_weights: { expr: 1.0, va: 1.0, au: 1.0 }
+
+output:
+  results_dir: results/stage3_f4_xattn

@@ -1,0 +1,31 @@
+# Data and caches (never commit)
+data/
+cache/
+
+# Results — ignore training logs and checkpoints, keep summary markdowns
+results/*
+!results/interim/
+results/interim/*
+!results/interim/*.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/

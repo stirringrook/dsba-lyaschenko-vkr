@@ -1,0 +1,42 @@
+# Stage 1 - reproduce paper A visual-only baseline with enet_b0_8_va_mtl.
+run_name: stage1_visual_enet
+seed: 42
+
+data:
+  root: data/affwild2
+  cropped_aligned_dir: data/affwild2/cropped_aligned
+  train_annotations: data/affwild2/annotations/training_set_annotations.txt
+  val_annotations:   data/affwild2/annotations/validation_set_annotations.txt
+  num_aus: 12
+  num_expr: 8
+
+backbone:
+  model_name: enet_b0_8_va_mtl    # 1280-D features + 10 scores = 1290-D input
+  engine: torch
+  feature_dim: 1280
+  scores_dim: 10
+
+head:
+  au_hidden: 128
+  l2_reg: 0.001953125             # 1/512 = 1/batch_size (matches notebook)
+
+train:
+  optimizer: adam
+  learning_rate: 1.0e-3
+  batch_size: 512
+  epochs_expr: 10
+  epochs_va:   20
+  epochs_au:   10
+  num_workers: 4
+  device: cuda
+
+features_cache: cache/features/enet_b0_8_va_mtl
+
+smoothing:
+  enabled: false
+  sigma: 100000
+  delta: 50
+  apply_to: [expr, va]
+
+output:
+  results_dir: results/stage1_visual_enet

@@ -1,0 +1,40 @@
+# Stage 2 - audio-only MTL baseline (HuBERT Large).
+# Primary audio backbone per the Stage 3 Extended Research Plan.
+run_name: stage2_audio_hubert
+seed: 42
+
+data:
+  root: data/affwild2
+  train_annotations: data/affwild2/annotations/training_set_annotations.txt
+  val_annotations:   data/affwild2/annotations/validation_set_annotations.txt
+  num_aus: 12
+  num_expr: 8
+
+modality: audio
+
+audio:
+  backbone: hubert_large            # facebook/hubert-large-ls960-ft
+  feature_dim: 1024
+  wav_dir:          cache/audio_wav
+  raw_features_dir: cache/features/hubert_large
+  aligned_dir:      cache/features/hubert_large_aligned
+
+visual:
+  # needed only to know the visual frame count per video for alignment
+  features_cache: cache/features/enet_b0_8_va_mtl
+
+head:
+  au_hidden: 128
+  l2_reg: 0.001953125
+
+train:
+  optimizer: adam
+  learning_rate: 1.0e-3
+  batch_size: 512
+  epochs_expr: 10
+  epochs_va:   20
+  epochs_au:   10
+  device: cuda
+
+output:
+  results_dir: results/stage2_audio_hubert

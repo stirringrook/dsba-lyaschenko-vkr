@@ -1,0 +1,44 @@
+# Stage 1 - reproduce paper A visual-only baseline with mbf_va_mtl.
+run_name: stage1_visual_mbf
+seed: 42
+
+data:
+  root: data/affwild2
+  cropped_aligned_dir: data/affwild2/cropped_aligned
+  train_annotations: data/affwild2/annotations/training_set_annotations.txt
+  val_annotations:   data/affwild2/annotations/validation_set_annotations.txt
+  num_aus: 12
+  num_expr: 8
+
+backbone:
+  model_name: mbf_va_mtl       # 512-D features + 10 scores = 522-D input
+  engine: torch                # one of {torch, onnx}
+  feature_dim: 512
+  scores_dim: 10
+
+head:
+  # Cell 44 of mtl.ipynb - one linear layer per task, AU gets a 128-ReLU hidden layer.
+  au_hidden: 128
+  l2_reg: 0.001953125          # 1/512 = 1/batch_size, matches notebook
+
+train:
+  # Heads are trained SEPARATELY, one after another (cells 47 / 50 / 53).
+  optimizer: adam
+  learning_rate: 1.0e-3
+  batch_size: 512
+  epochs_expr: 10
+  epochs_va:   20
+  epochs_au:   10
+  num_workers: 4
+  device: cuda                 # fall back to cpu automatically
+
+features_cache: cache/features/mbf_va_mtl
+
+smoothing:
+  enabled: false               # flip on for the ablation row
+  sigma: 100000
+  delta: 50
+  apply_to: [expr, va]         # AU smoothing hurts - confirmed cell 66
+
+output:
+  results_dir: results/stage1_visual_mbf
