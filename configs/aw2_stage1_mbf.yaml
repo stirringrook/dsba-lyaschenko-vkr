@@ -1,0 +1,43 @@
+# Stage 1 on the ABAW-7 MTL-challenge frames release in ../competition-data/.
+# Same semantics as stage1_visual.yaml (mbf backbone); only the data paths differ.
+run_name: aw2_stage1_mbf
+seed: 42
+
+data:
+  root: ../competition-data
+  cropped_aligned_dir: ../competition-data/cropped_aligned
+  train_annotations: ../competition-data/training_set_annotations.txt
+  val_annotations:   ../competition-data/validation_set_annotations.txt
+  num_aus: 12
+  num_expr: 8
+
+backbone:
+  model_name: mbf_va_mtl
+  engine: torch
+  feature_dim: 512
+  scores_dim: 10
+
+head:
+  au_hidden: 128
+  l2_reg: 0.001953125
+
+train:
+  optimizer: adam
+  learning_rate: 1.0e-3
+  batch_size: 512
+  epochs_expr: 10
+  epochs_va:   20
+  epochs_au:   10
+  num_workers: 4
+  device: cuda
+
+features_cache: cache/features/mbf_va_mtl
+
+smoothing:
+  enabled: false
+  sigma: 100000
+  delta: 50
+  apply_to: [expr, va]
+
+output:
+  results_dir: results/aw2_stage1_mbf
