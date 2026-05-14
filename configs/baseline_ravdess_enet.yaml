@@ -1,0 +1,9 @@
+# Frame-average baseline: RAVDESS val split, EmotiEffLib enet head.
+# Consumed by src.eval_frame_average_baseline.evaluate(cfg). The RAVDESS
+# val split is the same one used in tab:ablation_ravdess (in-domain
+# anchors) and tab:ablation_cross (zero-shot CREMA-D->RAVDESS); the
+# baseline is a zero-train upper bound on the EmotiEffLib pretrained
+# heads and is reported as an anchor against both.
+data:
+  val_annotations: data/ravdess/annotations/val.txt
+features_cache: cache/features/ravdess/enet_b0_8_va_mtl

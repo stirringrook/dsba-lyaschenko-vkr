@@ -1,35 +1,43 @@
-# Shared defaults for Stage 3 fusion variants.
-# Each variant config (stage3_f*.yaml) overrides `fusion` and `output.results_dir`.
-seed: 42
+# F6d MBT: attention-bottleneck fusion with B=4 latent tokens.
+# Nagrani et al. NeurIPS 2021.
+run_name: stage3_f6d_mbt
 
+seed: 42
 data:
   train_annotations: data/affwild2/annotations/training_set_annotations.txt
   val_annotations:   data/affwild2/annotations/validation_set_annotations.txt
   num_aus: 12
   num_expr: 8
-
 visual:
-  # Primary visual backbone per the research plan.
   backbone: enet_b0_8_va_mtl
   features_cache: cache/features/enet_b0_8_va_mtl
   feature_dim: 1280
   scores_dim: 10
-
 audio:
-  # Primary audio backbone per the research plan.
   backbone: hubert_large
   aligned_dir: cache/features/hubert_large_aligned
   feature_dim: 1024
-
 head:
   au_hidden: 128
+
+fusion:
+  variant: f6d_mbt
+  hidden: 192          # vs 256 in F4 — keeps F6d under the 2M-param ceiling
+                       # given its four _CrossAttnBlock instances
+  dropout: 0.1
+  num_heads: 4
+  window: 5
+  num_bottleneck_tokens: 4   # consumed by f6d_mbt only; ignored elsewhere
 
 train:
   optimizer: adamw
   learning_rate: 3.0e-4
-  weight_decay: 1.0e-4
-  batch_size: 256
-  epochs: 15
+  weight_decay: 1.0e-3
+  batch_size: 128
+  epochs: 3
   num_workers: 0
   device: cuda
   loss_weights: { expr: 1.0, va: 1.0, au: 1.0 }
+
+output:
+  results_dir: results/stage3_f6d_mbt

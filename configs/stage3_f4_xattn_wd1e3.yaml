@@ -1,0 +1,44 @@
+# S7 ablation: F4 retrained with stronger weight decay and a 3-epoch budget.
+# All other settings match configs/stage3_f4_xattn.yaml. Motivated by the
+# epoch-1 overfit observed in the original F4 log
+# (results/stage3_f4_xattn/log.csv: train loss 1.17 -> 0.28, val loss
+# 3.55 -> 6.14 over 15 epochs, best.pt at epoch 1).
+run_name: stage3_f4_xattn_wd1e3
+
+seed: 42
+data:
+  train_annotations: data/affwild2/annotations/training_set_annotations.txt
+  val_annotations:   data/affwild2/annotations/validation_set_annotations.txt
+  num_aus: 12
+  num_expr: 8
+visual:
+  backbone: enet_b0_8_va_mtl
+  features_cache: cache/features/enet_b0_8_va_mtl
+  feature_dim: 1280
+  scores_dim: 10
+audio:
+  backbone: hubert_large
+  aligned_dir: cache/features/hubert_large_aligned
+  feature_dim: 1024
+head:
+  au_hidden: 128
+
+fusion:
+  variant: f4_xattn
+  hidden: 256
+  dropout: 0.1
+  num_heads: 4
+  window: 5
+
+train:
+  optimizer: adamw
+  learning_rate: 3.0e-4
+  weight_decay: 1.0e-3       # was 1.0e-4
+  batch_size: 128
+  epochs: 3                  # was 15; best.pt always landed at epoch 1
+  num_workers: 0             # avoid Windows-spawn RAM blow-up
+  device: cuda
+  loss_weights: { expr: 1.0, va: 1.0, au: 1.0 }
+
+output:
+  results_dir: results/stage3_f4_xattn_wd1e3

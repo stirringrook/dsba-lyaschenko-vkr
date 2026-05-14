@@ -1,28 +1,28 @@
-# Shared defaults for Stage 3 fusion variants.
-# Each variant config (stage3_f*.yaml) overrides `fusion` and `output.results_dir`.
-seed: 42
+defaults: _stage3_shared.yaml
+run_name: stage3_visual_only_seed0
 
+seed: 0
 data:
   train_annotations: data/affwild2/annotations/training_set_annotations.txt
   val_annotations:   data/affwild2/annotations/validation_set_annotations.txt
   num_aus: 12
   num_expr: 8
-
 visual:
-  # Primary visual backbone per the research plan.
   backbone: enet_b0_8_va_mtl
   features_cache: cache/features/enet_b0_8_va_mtl
   feature_dim: 1280
   scores_dim: 10
-
 audio:
-  # Primary audio backbone per the research plan.
   backbone: hubert_large
   aligned_dir: cache/features/hubert_large_aligned
   feature_dim: 1024
-
 head:
   au_hidden: 128
+
+fusion:
+  variant: visual_only
+  hidden: 384
+  dropout: 0.3
 
 train:
   optimizer: adamw
@@ -33,3 +33,6 @@ train:
   num_workers: 0
   device: cuda
   loss_weights: { expr: 1.0, va: 1.0, au: 1.0 }
+
+output:
+  results_dir: results/stage3_visual_only_seed0

@@ -41,6 +41,7 @@ from src.heads.mtl_head import (
     make_loss_aus,
 )
 from src.utils.io import load_features_dir
+from src.utils.metrics import metric_for_Exp
 
 
 # ---------------------------------------------------------------------------
@@ -101,10 +102,16 @@ def _train_head(
     device: str,
     log_rows: List[Dict],
     head_name: str,
+    score_fn=None,
 ) -> nn.Module:
-    """Train ``head`` with Adam + early-stop-on-val-loss. Returns best state.
+    """Train ``head`` with Adam + early-stop on val. Returns best state.
 
-    Mirrors the ``SaveBestModel`` pattern from cells 47 / 50 / 53.
+    By default, best-checkpoint selection minimises the same ``loss_fn``
+    on the validation split (matches the ``SaveBestModel`` pattern from
+    cells 47 / 50 / 53 of ``mtl.ipynb``). Pass ``score_fn(head, X_val,
+    y_val) -> float`` (higher = better) to override --- used for the
+    EXPR head's ``head.expr_select_by: f1_macro`` option, which selects
+    on the actual scoring metric instead of class-weighted CE.
     """
     head = head.to(device)
     optim = torch.optim.Adam(head.parameters(), lr=lr, weight_decay=l2)
@@ -112,7 +119,8 @@ def _train_head(
         TensorDataset(X_train, y_train), batch_size=batch_size, shuffle=True
     )
 
-    best_val = float("inf")
+    higher_is_better = score_fn is not None
+    best_score = float("-inf") if higher_is_better else float("inf")
     best_state = {k: v.detach().cpu().clone() for k, v in head.state_dict().items()}
 
     for epoch in range(1, epochs + 1):
@@ -136,10 +144,17 @@ def _train_head(
         with torch.no_grad():
             val_out = head(X_val.to(device))
             val_loss = loss_fn(val_out, y_val.to(device)).item()
+            if score_fn is not None:
+                score = float(score_fn(head, X_val.to(device), y_val.to(device)))
+            else:
+                score = val_loss
 
-        improved = val_loss < best_val
+        if higher_is_better:
+            improved = score > best_score
+        else:
+            improved = score < best_score
         if improved:
-            best_val = val_loss
+            best_score = score
             best_state = {k: v.detach().cpu().clone() for k, v in head.state_dict().items()}
 
         log_rows.append(
@@ -148,14 +163,17 @@ def _train_head(
                 "epoch": epoch,
                 "train_loss": train_loss,
                 "val_loss": val_loss,
-                "best_val_loss": best_val,
+                "val_score": score,
+                "best_score": best_score,
                 "improved": int(improved),
                 "seconds": time.time() - t0,
             }
         )
+        suffix = "" if score_fn is None else f"  score={score:.4f}"
         print(
             f"[{head_name}] epoch {epoch:3d}  train={train_loss:.4f}  "
-            f"val={val_loss:.4f}  best={best_val:.4f}{'  *' if improved else ''}"
+            f"val={val_loss:.4f}{suffix}  best={best_score:.4f}"
+            f"{'  *' if improved else ''}"
         )
 
     head.load_state_dict(best_state)
@@ -217,6 +235,25 @@ def train_from_config(cfg) -> Path:
     def _expr_loss(logits, target):
         return nn.functional.cross_entropy(logits, target.long(), weight=class_w)
 
+    expr_select_by = str(cfg.head.get("expr_select_by", "val_loss")).lower()
+    if expr_select_by == "f1_macro":
+        def _expr_score(head, X, y):
+            head.eval()
+            with torch.no_grad():
+                logits = head(X)
+                pred = logits.argmax(dim=-1).cpu().numpy()
+                target = y.cpu().numpy()
+            f1, _, _ = metric_for_Exp(target, pred, class_num=head_cfg.num_expr)
+            return f1
+        expr_score_fn = _expr_score
+        print("[expr] selecting best.pt by macro-F1 (head.expr_select_by=f1_macro)")
+    elif expr_select_by == "val_loss":
+        expr_score_fn = None
+    else:
+        raise ValueError(
+            f"head.expr_select_by must be 'val_loss' or 'f1_macro', got {expr_select_by!r}"
+        )
+
     _train_head(
         model.expr,
         X_train_t[expr_train_mask],
@@ -231,6 +268,7 @@ def train_from_config(cfg) -> Path:
         device=device,
         log_rows=log_rows,
         head_name="expr",
+        score_fn=expr_score_fn,
     )
 
     # --------- VA ----------

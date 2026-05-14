@@ -1,0 +1,5 @@
+# Frame-average baseline: CREMA-D val split, EmotiEffLib mbf head.
+# Consumed by src.eval_frame_average_baseline.evaluate(cfg).
+data:
+  val_annotations: data/crema_d/annotations/val.txt
+features_cache: cache/features/crema_d/mbf_va_mtl

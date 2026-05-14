@@ -31,6 +31,7 @@ from torch.utils.data import DataLoader
 from src.datasets.bimodal import BimodalFrameDataset, BimodalWindowDataset
 from src.fusion.base import FusionConfig
 from src.fusion.f0_grid import grid_search_blend
+from src.fusion.f6a_dirichlet import grid_search_dirichlet
 from src.train_fusion import FUSION_REGISTRY, build_model, wants_window
 from src.utils.metrics import (
     f1_macro_au,
@@ -199,6 +200,66 @@ def evaluate_f0_grid(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     _write_md(output_dir / "metrics_f0.md", "f0_grid", metrics)
+    return metrics
+
+
+def evaluate_f6a_dirichlet(
+    checkpoints: Dict[str, str | Path],
+    config_path: str | Path,
+    output_dir: str | Path | None = None,
+    step: float = 0.2,
+) -> Dict[str, float]:
+    """F6a post-hoc Dirichlet ensemble over a dict ``{name: checkpoint}``.
+
+    Loads every checkpoint, runs one validation forward pass per model,
+    and grid-searches a per-task simplex blend via
+    :func:`src.fusion.f6a_dirichlet.grid_search_dirichlet`. All checkpoints
+    must have been trained against the same val split (the function uses
+    the first checkpoint's frame-level val loader).
+    """
+    cfg = OmegaConf.load(config_path)
+    device = cfg.train.device if torch.cuda.is_available() else "cpu"
+
+    expr_logits, vas, aus = [], [], []
+    y_state = None
+    names = list(checkpoints.keys())
+    for name in names:
+        ckp = checkpoints[name]
+        ck = torch.load(ckp, map_location="cpu", weights_only=False)
+        fus_cfg = FusionConfig(**ck["fus_cfg"])
+        model = build_model(ck["variant"], fus_cfg)
+        model.load_state_dict(ck["state_dict"])
+        model.to(device)
+        loader = _build_val_loader(cfg, ck["variant"])
+        preds = _collect_predictions(model, loader, device)
+        expr_logits.append(preds[0])
+        vas.append(preds[1])
+        aus.append(preds[2])
+        if y_state is None:
+            y_state = preds[3:]
+        del model
+
+    y_expr, y_va, y_aus, m_expr, m_va, m_au = y_state
+    res = grid_search_dirichlet(
+        expr_logits, vas, aus,
+        y_expr, y_va, y_aus,
+        m_expr, m_va, m_au,
+        variant_names=names,
+        step=step,
+    )
+    metrics = dict(res.metrics)
+    metrics["variant"] = "f6a_dirichlet"
+    metrics["w_expr"] = res.w_expr
+    metrics["w_va"] = res.w_va
+    metrics["w_au"] = res.w_au
+    metrics["t_au"] = res.t_au
+    metrics["variants"] = res.variants
+
+    if output_dir is None:
+        output_dir = Path(cfg.output.results_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _write_md(output_dir / "metrics_f6a.md", "f6a_dirichlet", metrics)
     return metrics
 
 

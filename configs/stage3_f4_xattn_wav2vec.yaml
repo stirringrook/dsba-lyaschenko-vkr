@@ -1,0 +1,42 @@
+# S7 ablation: F4 with the wav2vec 2.0 base audio encoder instead of HuBERT.
+# Directly answers RQ3 (wav2vec vs HuBERT). The wav2vec aligned cache was
+# materialised by aw2_04_align_audio.ipynb in parallel with the HuBERT one.
+run_name: stage3_f4_xattn_wav2vec
+
+seed: 42
+data:
+  train_annotations: data/affwild2/annotations/training_set_annotations.txt
+  val_annotations:   data/affwild2/annotations/validation_set_annotations.txt
+  num_aus: 12
+  num_expr: 8
+visual:
+  backbone: enet_b0_8_va_mtl
+  features_cache: cache/features/enet_b0_8_va_mtl
+  feature_dim: 1280
+  scores_dim: 10
+audio:
+  backbone: wav2vec2_base
+  aligned_dir: cache/features/wav2vec2_base_aligned
+  feature_dim: 768           # wav2vec 2.0 base is 768-d; HuBERT large is 1024-d
+head:
+  au_hidden: 128
+
+fusion:
+  variant: f4_xattn
+  hidden: 256
+  dropout: 0.1
+  num_heads: 4
+  window: 5
+
+train:
+  optimizer: adamw
+  learning_rate: 3.0e-4
+  weight_decay: 1.0e-3
+  batch_size: 128
+  epochs: 3
+  num_workers: 0
+  device: cuda
+  loss_weights: { expr: 1.0, va: 1.0, au: 1.0 }
+
+output:
+  results_dir: results/stage3_f4_xattn_wav2vec

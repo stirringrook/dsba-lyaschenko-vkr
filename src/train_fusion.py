@@ -37,6 +37,8 @@ from src.fusion.f2_blend import LearnedBlend
 from src.fusion.f3_gate import TaskGate
 from src.fusion.f4_xattn import CrossModalAttention
 from src.fusion.f5_lmf import LMFusion
+from src.fusion.f6c_iaca import IACAGate
+from src.fusion.f6d_mbt import MBTFusion
 from src.fusion.unimodal import AudioOnly, VisualOnly
 from src.heads.mtl_head import loss_va, make_loss_aus
 
@@ -49,6 +51,8 @@ FUSION_REGISTRY = {
     "f3_gate": (TaskGate, False),
     "f4_xattn": (CrossModalAttention, True),   # True = wants temporal window
     "f5_lmf": (LMFusion, False),
+    "f6c_iaca": (IACAGate, True),
+    "f6d_mbt": (MBTFusion, True),
 }
 
 

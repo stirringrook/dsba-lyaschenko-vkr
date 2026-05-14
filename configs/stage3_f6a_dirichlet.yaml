@@ -1,0 +1,41 @@
+# F6a post-hoc Dirichlet-weighted ensemble over F1-F5 + visual_only.
+# No trainable parameters of its own. The notebook (Section 14 of
+# aw2_06_stage3_ablations.ipynb) supplies the per-variant checkpoint
+# paths to evaluate_f6a_dirichlet(); this YAML only fixes the data
+# paths used to build the shared validation loader. Reference: SUN team
+# CVPRW 2024 (Dresvyanskiy et al.).
+run_name: stage3_f6a_dirichlet
+
+seed: 42
+data:
+  train_annotations: data/affwild2/annotations/training_set_annotations.txt
+  val_annotations:   data/affwild2/annotations/validation_set_annotations.txt
+  num_aus: 12
+  num_expr: 8
+visual:
+  backbone: enet_b0_8_va_mtl
+  features_cache: cache/features/enet_b0_8_va_mtl
+  feature_dim: 1280
+  scores_dim: 10
+audio:
+  backbone: hubert_large
+  aligned_dir: cache/features/hubert_large_aligned
+  feature_dim: 1024
+head:
+  au_hidden: 128
+
+fusion:
+  variant: f6a_dirichlet
+  step: 0.2          # simplex grid step; 0.2 yields 126 weight vectors over 5 variants
+
+train:
+  optimizer: adamw
+  learning_rate: 3.0e-4
+  weight_decay: 1.0e-4
+  batch_size: 256
+  epochs: 0
+  num_workers: 4
+  device: cuda
+
+output:
+  results_dir: results/stage3_f6a_dirichlet
