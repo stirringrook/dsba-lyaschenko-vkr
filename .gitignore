@@ -10,6 +10,11 @@ results/interim/*
 !results/aw2_stage1/
 results/aw2_stage1/*
 !results/aw2_stage1/*.md
+!results/emi/
+results/emi/*
+!results/emi/*.md
+!results/emi/multiseed.json
+# summary.json is 12 MB val predictions — kept local, not committed
 
 # Python
 __pycache__/

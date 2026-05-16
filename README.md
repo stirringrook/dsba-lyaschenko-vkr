@@ -18,6 +18,18 @@ comparison — bootstrap 95% CI on the mean Δ = F4 − visual_only is
 strictly negative at both w=5 and w=10. The residual contribution is a
 modality-specific CCC_A effect, localised by F3 gate analysis.
 
+The same audit methodology is then verified end-to-end on the EMI
+sub-challenge of ABAW-8 (`notebooks/emi_experiments.ipynb`,
+`results/emi/`): on a three-modality (face + audio + Whisper text)
+benchmark of different structure, the held-out fusion advantage of
+`concat_mlp` and `xattn` over the best single modality (`text/mean`)
+is +0.016–0.019 mean Pearson, positive on 6/6 paired seeds (Wilcoxon
+p = 0.0312, the minimum attainable at N = 6); `gated` is a confirmed
+null. An upstream aggregation result drops out: `mean` pooling beats
+the published `stats4` baseline on audio by a 3× factor (0.352 vs
+0.115), lifting the reproduced late-fusion baseline from ~0.44 to
+0.46 without any architectural change.
+
 ## Layout
 
 ```
@@ -78,8 +90,11 @@ thesis-code/
     aw2_05_stage3_fusion.ipynb      F0–F5 bimodal sweep
     aw2_06_stage3_ablations.ipynb   F4 ablations + multi-seed
     aw2_07_stage3_extras.ipynb      F6a / F6c / F6d candidates
+    emi_experiments.ipynb           EMI (ABAW-8) §A aggregation, §B fusion,
+                                    §C example-bootstrap, §D multi-seed audit
   tests/                    pytest unit tests (no data dependency)
   results/interim/*.md      committed summary tables / ablations
+  results/emi/*.md          EMI aggregation / fusion / bootstrap / multiseed tables
   results/                  .gitignored except summary markdowns
   cache/                    .gitignored; per-backbone feature caches
 ```
@@ -139,6 +154,54 @@ jupyter lab notebooks/aw2_07_stage3_extras.ipynb
 | **mbf_va_mtl** (secondary)     | 0.4503 | 0.2870 | 0.4891 | **1.2264** |
 
 Smoothing adds roughly +0.05–0.11 on P_MTL.
+
+## EMI (ABAW-8) verification pipeline
+
+The EMI (Emotional Mimicry Intensity) sub-challenge of ABAW-8
+re-runs the s-Aff-Wild2 paired-seed audit on a benchmark of different
+structure: per-clip rather than per-frame annotations, three native
+modalities (face / audio / text), and a Whisper-transcript embedding
+in place of a derived modality. Pre-extracted features from the
+HSEmotion ABAW-8 submission are the input: MobileViT-VA face (768-D),
+HuBERT-large audio (1024-D), Whisper → text-embedding-3-small text
+(1536-D). The pipeline is single-notebook; no extraction step lives
+in `src/`.
+
+```bash
+# Drop pickles + splits into data/emi/ (see notebook §0 for paths)
+#   data/emi/labels/{train_split,valid_split}.csv
+#   data/emi/features/emi_mobilevit_va_mtl_orig_faces.pickle
+#   data/emi/features/emi_dict_hubert.pickle
+#   data/emi/features/emi_whisper_openai_small.pickle
+jupyter lab notebooks/emi_experiments.ipynb
+```
+
+Four sections, each persisted under `results/emi/`:
+
+```
+§A  agg_table.md                 mean / stats4 / attention pool per modality
+§B  fusion_table.md              late_grid / late_learn / concat_mlp / gated / xattn
+§C  stat_significance_table.md   N=4588 example-level bootstrap (B=1000), paired p vs text/mean
+§D  multiseed_table.md           K=6 seeds × {concat_mlp, gated, xattn},
+    multiseed.json               paired bootstrap (B=10 000) + Wilcoxon on per-seed Δ
+```
+
+Headline numbers (val mean Pearson, $N_{\mathrm{val}} = 4588$):
+
+| | `text/mean` (ref) | `concat_mlp` | `xattn` | `gated` |
+|---|---:|---:|---:|---:|
+| single seed | 0.4295 | 0.4469 | 0.4486 | 0.4270 |
+| 6-seed mean ± s.d. | 0.4294 ± 0.0021 | 0.4455 ± 0.0010 | 0.4441 ± 0.0046 | 0.4316 ± 0.0047 |
+| Δ vs ref, Wilcoxon p | — | **+0.0161**, p=0.0312 (6/6) | **+0.0148**, p=0.0312 (6/6) | +0.0023, p=0.44 (3/6) |
+
+Upstream aggregation finding (Table §A): on audio, `mean` (0.352)
+beats `stats4` (0.115) by a 3× factor, lifting the reproduced
+late-fusion baseline from 0.44 to 0.46 without any architectural
+change.
+
+The `attention` pool over per-frame HuBERT features is missing
+from §A because the ~15 GB resident feature dict exceeds the 16 GB
+local RAM budget; deferred to a larger machine.
 
 ## CREMA-D / RAVDESS interim sweep
 
