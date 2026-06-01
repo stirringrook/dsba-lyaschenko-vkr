@@ -1,10 +1,10 @@
-"""Unit tests for :mod:`src.datasets.emotion_va_mapping`."""
+"""Unit tests for the VA-mapping half of :mod:`src.datasets.label_mapping`."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.datasets.emotion_va_mapping import (
+from src.datasets.label_mapping import (
     CREMAD_INTENSITY_SCALE,
     EXPR_NAME_TO_AFFWILD2_IDX,
     RAVDESS_INTENSITY_SCALE,

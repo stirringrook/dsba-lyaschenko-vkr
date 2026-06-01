@@ -37,3 +37,6 @@ venv/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Planning-era audio-only templates, never wired to a harness (kept local)
+configs/stage2_audio_*.yaml

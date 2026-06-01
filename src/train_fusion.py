@@ -7,8 +7,8 @@ frozen by construction (we train on cached features, the encoders are
 not part of the graph).
 
 Usage:
-    python train_fusion.py --config configs/stage3_f4_xattn.yaml
-    python train_fusion.py --config configs/stage3_f0_visual_only.yaml
+    python -m src.train_fusion --config configs/stage3_f4_xattn.yaml
+    python -m src.train_fusion --config configs/stage3_f0_visual_only.yaml
 """
 
 from __future__ import annotations
@@ -32,14 +32,17 @@ from src.datasets.affwild2_mtl import (
 )
 from src.datasets.bimodal import BimodalFrameDataset, BimodalWindowDataset
 from src.fusion.base import FusionConfig, count_parameters
-from src.fusion.f1_concat import EarlyConcat
-from src.fusion.f2_blend import LearnedBlend
-from src.fusion.f3_gate import TaskGate
 from src.fusion.f4_xattn import CrossModalAttention
 from src.fusion.f5_lmf import LMFusion
 from src.fusion.f6c_iaca import IACAGate
 from src.fusion.f6d_mbt import MBTFusion
-from src.fusion.unimodal import AudioOnly, VisualOnly
+from src.fusion.variants import (
+    AudioOnly,
+    EarlyConcat,
+    LearnedBlend,
+    TaskGate,
+    VisualOnly,
+)
 from src.heads.mtl_head import loss_va, make_loss_aus
 
 
@@ -294,12 +297,24 @@ def train_from_config(cfg) -> Path:
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Train a Stage 3 fusion variant.")
     p.add_argument("--config", required=True)
+    p.add_argument(
+        "--set",
+        dest="overrides",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Override a config key (repeatable). Dotted keys address nested "
+        "fields, e.g. --set seed=1 --set output.results_dir=results/foo. The "
+        "fully-resolved config is still saved to results/<run>/config.yaml.",
+    )
     return p
 
 
 def main() -> None:
     args = _build_parser().parse_args()
     cfg = OmegaConf.load(args.config)
+    if args.overrides:
+        cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(args.overrides))
     train_from_config(cfg)
 
 

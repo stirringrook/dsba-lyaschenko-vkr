@@ -16,9 +16,11 @@ Implementation:
 * Output per task ``t`` is
   ``logit_t = g_t * fused_t + (1 - g_t) * visual_t``.
 
-Param count at the default settings (``hidden=256``, ``num_heads=4``,
-``window=5``, gate hidden 128) sits at $\\approx 2$ M, just above F4
-(1.7 M) and below the report's 2 M ceiling.
+Param count at the production settings (``hidden=256``, ``num_heads=4``,
+``window=5``, gate hidden 128) is $\\approx 2.0$ M (2,000,660 params),
+just above F4 (1.7 M) and within the report's 2.5 M budget. The count
+is independent of ``hidden`` because the cross-attention block reuses
+F4's fixed-dim projections.
 """
 
 from __future__ import annotations

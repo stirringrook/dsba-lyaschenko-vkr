@@ -1,4 +1,3 @@
-defaults: _stage3_shared.yaml
 run_name: stage3_visual_only
 
 seed: 42

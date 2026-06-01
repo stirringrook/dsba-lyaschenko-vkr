@@ -8,7 +8,7 @@ is ``image_path, valence, arousal, expression_id, AU1 ... AU12`` with
 
 This module parses the CREMA-D and RAVDESS filename conventions, applies
 the Russell-circumplex VA mapping from
-:mod:`src.datasets.emotion_va_mapping`, and writes annotation files that
+:mod:`src.datasets.label_mapping`, and writes annotation files that
 the existing parser can consume unchanged. It ALSO produces actor-disjoint
 train / val / test splits (70/15/15 on CREMA-D; RAVDESS is used in full as
 a cross-dataset held-out set).
@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from src.datasets.emotion_va_mapping import (
+from src.datasets.label_mapping import (
     CREMAD_INTENSITY_SCALE,
     EXPR_NAME_TO_AFFWILD2_IDX,
     RAVDESS_INTENSITY_SCALE,

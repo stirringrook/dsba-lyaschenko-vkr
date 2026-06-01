@@ -7,11 +7,11 @@ handled as a special post-hoc mode: it loads two separately-trained
 unimodal checkpoints and grid-searches ``w`` per task.
 
 Usage:
-    python eval_fusion.py --config configs/stage3_f4_xattn.yaml \
+    python -m src.eval_fusion --config configs/stage3_f4_xattn.yaml \
         --checkpoint results/stage3_f4_xattn/best.pt
 
     # F0 late blend (requires two trained unimodal heads):
-    python eval_fusion.py --mode f0_grid \
+    python -m src.eval_fusion --mode f0_grid \
         --visual-checkpoint  results/stage3_visual_only/best.pt \
         --audio-checkpoint   results/stage3_audio_only/best.pt \
         --config configs/stage3_f0_grid.yaml

@@ -41,16 +41,16 @@ thesis-code/
     aw2_stage1_*.yaml     Aff-Wild2 visual-only, per backbone
     stage2_*.yaml         Aff-Wild2 audio-only (HuBERT / wav2vec)
     stage3_*.yaml         Aff-Wild2 bimodal fusion (F0–F5 + F6a/c/d)
-    stage3_*_seed{0..4}.yaml   matched seed pool for paired audit
-    stage3_f4_xattn_{w1,w3,w10,wav2vec,mbf}.yaml   F4 ablations
+    stage3_f4_xattn_{w1,w3,w10,wav2vec,wd1e3,mbf}.yaml   F4 ablations
     baseline_{crema,ravdess}_{enet,mbf}.yaml       secondary datasets
+    # The matched seed pool (seeds 0..4) is NOT one file per seed: each run
+    # is a base config plus `--set seed=N` overrides (see Quick start step 5).
   src/
     utils/{metrics,io}.py     CCC, F1, P_MTL; .npz/.pickle caches
     datasets/
       affwild2_mtl.py         annotation parser + Dataset
       bimodal.py              frame- and window-level bimodal Dataset
-      emotion_va_mapping.py   categorical → circumplex VA anchors
-      native_labels.py        CREMA-D / RAVDESS adapter to MTL schema
+      label_mapping.py        categorical → VA anchors + CREMA-D / RAVDESS native labels
       interim_prep.py         secondary corpora preparation
       interim_download.py     fetch helpers
     features/
@@ -59,19 +59,15 @@ thesis-code/
       extract_audio_features.py     HuBERT / wav2vec 2.0 → per-video .npz
       align_audio_to_video.py       temporal resample to video framerate
       extract_faces_from_video.py   face detector fallback
-      build_fps_lookup.py           per-video framerate cache
     fusion/
       base.py                 shared FusionConfig + MLP heads
       f0_grid.py              grid-search logit blend (no training)
-      f1_concat.py            early concat
-      f2_blend.py             learned scalar blend
-      f3_gate.py              per-task sigmoid gate
+      variants.py             unimodal controls + F1 concat / F2 blend / F3 gate
       f4_xattn.py             cross-modal attention (two directions)
       f5_lmf.py               low-rank multimodal fusion
       f6a_dirichlet.py        post-hoc Dirichlet-weighted ensemble
       f6c_iaca.py             inconsistency-aware gate on top of F4
       f6d_mbt.py              attention-bottleneck (MBT) fusion
-      unimodal.py             visual-only / audio-only controls
     heads/mtl_head.py         3-head linear MTL model + masked losses
     smoothing.py              per-video gaussian filter (EXPR + VA)
     smooth_fusion.py          Paper-A (σ, δ) grid post-hoc on Stage 3
@@ -119,19 +115,31 @@ python -m src.features.extract_visual --model enet_b0_8_va_mtl \
     --out cache/features/enet_b0_8_va_mtl
 
 # 2. Stage 1: three-head MTL on visual features only.
-python train.py --config configs/aw2_stage1_enet.yaml
+python -m src.train --config configs/aw2_stage1_enet.yaml
 
 # 3. Stage 2: audio features (HuBERT-large) + alignment.
 jupyter lab notebooks/aw2_03_extract_audio.ipynb
 jupyter lab notebooks/aw2_04_align_audio.ipynb
 
 # 4. Stage 3: bimodal fusion sweep (F0–F5).
-python train_fusion.py --config configs/stage3_f4_xattn.yaml
+python -m src.train_fusion --config configs/stage3_f4_xattn.yaml
 # ... one config per variant; see notebooks/aw2_05_stage3_fusion.ipynb
 
-# 5. F4 ablations + multi-seed (visual_only + F4 at seeds 0..4 for w∈{5,10}).
-for cfg in configs/stage3_{visual_only,f4_xattn,f4_xattn_w10}_seed{0..4}.yaml; do
-    python train_fusion.py --config "$cfg"
+# 5. Matched seed pool for the paired audit (seeds 0..4; seed 42 = the base
+#    runs above). Each run is a base config with seed + run-name + results-dir
+#    overridden via --set; the fully-resolved config is saved to
+#    results/<run>/config.yaml. F4 uses the corrected wd=1e-3 / 3-epoch protocol.
+for s in 0 1 2 3 4; do
+    python -m src.train_fusion --config configs/stage3_visual_only.yaml \
+        --set seed=$s --set run_name=stage3_visual_only_seed$s \
+        --set output.results_dir=results/stage3_visual_only_seed$s \
+        --set train.num_workers=0
+    python -m src.train_fusion --config configs/stage3_f4_xattn_wd1e3.yaml \
+        --set seed=$s --set run_name=stage3_f4_xattn_seed$s \
+        --set output.results_dir=results/stage3_f4_xattn_seed$s
+    python -m src.train_fusion --config configs/stage3_f4_xattn_w10_wd1e3.yaml \
+        --set seed=$s --set run_name=stage3_f4_xattn_w10_seed$s \
+        --set output.results_dir=results/stage3_f4_xattn_w10_seed$s
 done
 
 # 6. Post-hoc Paper-A Gaussian smoothing grid per checkpoint.
@@ -175,6 +183,12 @@ in `src/`.
 #   data/emi/features/emi_whisper_openai_small.pickle
 jupyter lab notebooks/emi_experiments.ipynb
 ```
+
+`emi_experiments.ipynb` is generated from inline cell definitions by
+`notebooks/_build_emi_nb.py` (re-run it after editing cells to rebuild the
+notebook in place). `notebooks/run_audio_attention.py` is the server-side
+CLI that computes the one `audio/attention` aggregation cell on the
+supervisor's machine, where the ~17 GB HuBERT feature pickle lives.
 
 Four sections, each persisted under `results/emi/`:
 
@@ -231,5 +245,9 @@ Data, feature caches, training checkpoints, and per-run logs are all
 `.gitignored`. The only outputs that travel with the repo are the
 markdown summary tables under `results/interim/` and the per-run
 `smoothing.md` / `smoothing.json` dumps that the thesis tables cite.
-Every result row in the thesis corresponds to a YAML config in
-`configs/` and a single `results/<run>/` directory.
+Every result row in the thesis corresponds to a `configs/` YAML (optionally
+plus `--set` overrides for the seed sweep) and a single `results/<run>/`
+directory. Because `train_from_config` writes the fully-resolved config to
+`results/<run>/config.yaml`, each run remains exactly reproducible even
+when its inputs were a base config plus overrides rather than a standalone
+file.

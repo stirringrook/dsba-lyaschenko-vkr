@@ -12,12 +12,17 @@ import torch
 
 from src.fusion.base import FusionConfig, count_parameters
 from src.fusion.f0_grid import grid_search_blend
-from src.fusion.f1_concat import EarlyConcat
-from src.fusion.f2_blend import LearnedBlend
-from src.fusion.f3_gate import TaskGate
 from src.fusion.f4_xattn import CrossModalAttention
 from src.fusion.f5_lmf import LMFusion
-from src.fusion.unimodal import AudioOnly, VisualOnly
+from src.fusion.f6c_iaca import IACAGate
+from src.fusion.f6d_mbt import MBTFusion
+from src.fusion.variants import (
+    AudioOnly,
+    EarlyConcat,
+    LearnedBlend,
+    TaskGate,
+    VisualOnly,
+)
 
 
 CFG = FusionConfig(
@@ -91,6 +96,26 @@ def test_f4_xattn_accepts_frame_and_window():
     # Cross-modal stack is the heaviest fusion variant due to 1290->256 and
     # 1024->256 input projections; 2.0 M is a comfortable upper bound.
     assert count_parameters(m) < 2_000_000
+
+
+def test_f6c_iaca_shapes_and_budget():
+    # F6c is built on F4's fixed-dim cross-attention block, so its count is
+    # ~2.0M independent of cfg.hidden; report budget is < 2.5M.
+    m = IACAGate(FusionConfig(v_dim=1280, scores_dim=10, a_dim=1024, hidden=256))
+    _assert_output_shapes(*m(*_fake_frame_batch()))     # frame-level unsqueeze
+    _assert_output_shapes(*m(*_fake_window_batch(11)))  # windowed
+    n = count_parameters(m)
+    assert n < 2_500_000, f"IACAGate has {n} trainable params (budget 2.5M)"
+
+
+def test_f6d_mbt_shapes_and_budget():
+    # F6d-MBT scales steeply with hidden (four _CrossAttnBlocks): ~1.7M at the
+    # production hidden=192, but ~9.8M at hidden=512. Pin the production value.
+    m = MBTFusion(FusionConfig(v_dim=1280, scores_dim=10, a_dim=1024, hidden=192))
+    _assert_output_shapes(*m(*_fake_frame_batch()))     # frame-level unsqueeze
+    _assert_output_shapes(*m(*_fake_window_batch(11)))  # windowed
+    n = count_parameters(m)
+    assert n < 2_500_000, f"MBTFusion(hidden=192) has {n} trainable params (budget 2.5M)"
 
 
 def test_f3_gate_exposes_alpha():

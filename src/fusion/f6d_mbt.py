@@ -16,9 +16,12 @@ Architecture:
   mean-pooling the *bottleneck* tokens.
 * Heads consume ``[mean(v_hat), mean(a_hat), mean(z_hat)]``.
 
-At ``hidden=256, num_heads=4, B_tokens=4, window=5`` this lands at
-$\\approx 1.0$ M trainable params --- below F4 and within the 2 M
-ceiling.
+At the production ``hidden=192, num_heads=4, B_tokens=4, window=5``
+this lands at $\\approx 1.7$ M trainable params (on par with F4) and
+within the report's 2.5 M budget. The count scales steeply with
+``hidden`` --- $\\approx 2.8$ M at hidden=256 and $\\approx 9.8$ M at
+hidden=512 --- because of the four ``_CrossAttnBlock`` instances, so
+``hidden`` is kept at 192 in the config.
 """
 
 from __future__ import annotations

@@ -13,7 +13,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from src.datasets.native_labels import (
+from src.datasets.label_mapping import (
     AFFWILD2_IDX_FOR_CREMAD,
     AFFWILD2_IDX_FOR_RAVDESS_8,
     LABEL_SPACE_CREMAD6,
@@ -97,7 +97,7 @@ class TestRestrictedArgmax:
 
     def test_ravdess7_bijective(self):
         for native_code in NATIVE_RAVDESS_7:
-            from src.datasets.native_labels import AFFWILD2_IDX_FOR_RAVDESS_7
+            from src.datasets.label_mapping import AFFWILD2_IDX_FOR_RAVDESS_7
             idx = AFFWILD2_IDX_FOR_RAVDESS_7[native_code]
             probs = self._one_hot_8(idx)[None, :]
             picked = restricted_argmax(probs, LABEL_SPACE_RAVDESS7)

@@ -21,7 +21,7 @@ Aggregation procedure:
     2. Per-frame softmax probabilities are averaged into one 8-D vector
        per clip (videoname).
     3. The argmax is restricted to the dataset's native AffWild2-index
-       subset (see :mod:`src.datasets.native_labels`).
+       subset (see :mod:`src.datasets.label_mapping`).
     4. Ground-truth labels are recovered from the clip filename, NOT
        from the AffWild2-mapped annotation file --- otherwise RAVDESS
        Calm collapses into Neutral and the supervisor's criticism
@@ -32,20 +32,20 @@ Aggregation procedure:
 Usage examples::
 
     # Single trained checkpoint (F1-F5, visual-only, audio-only):
-    python eval_standard_protocol.py \\
+    python -m src.eval_standard_protocol \\
         --config configs/interim/crema_f4_xattn.yaml \\
         --checkpoint results/interim/crema_f4_xattn/best.pt \\
         --dataset cremad
 
     # F0 post-hoc late blend:
-    python eval_standard_protocol.py --mode f0_grid \\
+    python -m src.eval_standard_protocol --mode f0_grid \\
         --visual-checkpoint results/interim/crema_visual_only/best.pt \\
         --audio-checkpoint  results/interim/crema_audio_only/best.pt \\
         --config configs/interim/crema_f0_grid.yaml \\
         --dataset cremad
 
     # Sweep every checkpoint in results/interim/ and write a summary:
-    python eval_standard_protocol.py --run-all \\
+    python -m src.eval_standard_protocol --run-all \\
         --interim-results-dir results/interim \\
         --output results/interim/standard_protocol_summary.md
 """
@@ -65,7 +65,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from torch.utils.data import DataLoader
 
 from src.datasets.bimodal import BimodalFrameDataset, BimodalWindowDataset
-from src.datasets.native_labels import (
+from src.datasets.label_mapping import (
     LABEL_SPACE_CREMAD6,
     LABEL_SPACE_RAVDESS7,
     LABEL_SPACE_RAVDESS8,

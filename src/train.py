@@ -342,12 +342,24 @@ def train_from_config(cfg) -> Path:
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Stage 1 MTL head training.")
     p.add_argument("--config", required=True, help="Path to a YAML config.")
+    p.add_argument(
+        "--set",
+        dest="overrides",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Override a config key (repeatable). Dotted keys address nested "
+        "fields, e.g. --set seed=1 --set output.results_dir=results/foo. The "
+        "fully-resolved config is still saved to results/<run>/config.yaml.",
+    )
     return p
 
 
 def main() -> None:
     args = _build_parser().parse_args()
     cfg = OmegaConf.load(args.config)
+    if args.overrides:
+        cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(args.overrides))
     train_from_config(cfg)
 
 
